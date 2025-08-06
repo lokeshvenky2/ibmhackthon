@@ -2,102 +2,54 @@ package com.example.insider_threat.service;
 
 import com.example.insider_threat.model.Threat;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Service
 public class ThreatService {
-    private static final int THRESHOLD = 25;
-    private static final int MIN_RISK = 5;
-    private static final int MAX_RISK = 50;
-    private final Random random = new Random();
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private static final String ML_API_URL = "http://localhost:5000/api/predict-threats"; // Update port if changed
 
     public List<Threat> getActiveThreats() {
-        List<Threat> allEntities = generateMockEntities();
-        List<Threat> activeThreats = new ArrayList<>();
+        try {
+            // Attempt to fetch data from Python ML service
+            Threat[] threatsArray = restTemplate.getForObject(ML_API_URL, Threat[].class);
+            List<Threat> threats = (threatsArray != null) ? List.of(threatsArray) : new ArrayList<>();
 
-        for (Threat entity : allEntities) {
-            // Generate random anomaly score (simulating Isolation Forest output)
-            double anomalyScore = random.nextDouble(); // 0.0 to 1.0
-            
-            // Convert anomaly score to risk score (5-50)
-            int riskScore = MIN_RISK + (int)(anomalyScore * (MAX_RISK - MIN_RISK));
-            
-            // Update entity with scores
-            entity.setAnomalyScore(anomalyScore);
-            entity.setRiskScore(riskScore);
-            
-            // Generate contributing factors based on risk score
-            entity.setContributingFactors(generateContributingFactors(riskScore));
-            
-            // Generate recommendation based on risk score
-            entity.setRecommendation(generateRecommendation(entity.getEntity(), riskScore));
-            
-            // Filter active threats (risk score > threshold)
-            if (riskScore > THRESHOLD) {
-                activeThreats.add(entity);
+            // Filter and sort
+            List<Threat> activeThreats = new ArrayList<>();
+            for (Threat threat : threats) {
+                if (threat.getRiskScore() > 25 || threat.isAnomaly()) {
+                    activeThreats.add(threat);
+                }
             }
+            activeThreats.sort((a, b) -> Double.compare(b.getRiskScore(), a.getRiskScore()));
+            return activeThreats.isEmpty() ? generateFallbackData() : activeThreats;
+        } catch (ResourceAccessException e) {
+            System.err.println("Failed to connect to ML service at " + ML_API_URL + ". Using fallback data: " + e.getMessage());
+            return generateFallbackData();
         }
-
-        // Sort by risk score descending
-        activeThreats.sort((a, b) -> Integer.compare(b.getRiskScore(), a.getRiskScore()));
-        
-        return activeThreats;
     }
 
-    private List<Threat> generateMockEntities() {
-        String[] entities = {
-            "John Smith", "Emily Johnson", "Michael Brown", "Sarah Davis", 
-            "David Wilson", "Lisa Miller", "James Moore", "Jennifer Taylor",
-            "Robert Anderson", "Mary Thomas", "William Jackson", "Patricia White",
-            "Thomas Harris", "Linda Martin", "Christopher Thompson", "Barbara Garcia",
-            "Daniel Martinez", "Elizabeth Robinson", "Matthew Clark", "Susan Rodriguez"
-        };
-
-        List<Threat> mockEntities = new ArrayList<>();
-        for (int i = 0; i < entities.length; i++) {
-            mockEntities.add(new Threat(String.valueOf(i + 1), entities[i], 0.0, 0, new ArrayList<>(), ""));
+    private List<Threat> generateFallbackData() {
+        List<Threat> fallbackThreats = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            Threat threat = new Threat(
+                String.valueOf(i),
+                "User_" + i,
+                Math.random(),
+                Math.random() * 45 + 5, // Random risk score between 5 and 50
+                Math.random() > 0.7,    // 30% chance of anomaly
+                Math.random() > 0.5 ? "High" : "Low",
+                List.of("Fallback factor"),
+                "Monitor"
+            );
+            fallbackThreats.add(threat);
         }
-        return mockEntities;
-    }
-
-    private List<String> generateContributingFactors(int riskScore) {
-        List<String> factors = new ArrayList<>();
-        String[] allFactors = {
-            "Unusual login times", "Access to sensitive data", "Large data transfers",
-            "Multiple failed logins", "Privilege escalation attempts", "File access anomalies",
-            "Network activity spikes", "Suspicious email patterns"
-        };
-
-        int factorCount = 1;
-        if (riskScore > 40) {
-            factorCount = 3;
-        } else if (riskScore > 30) {
-            factorCount = 2;
-        }
-
-        // Select random factors
-        List<String> factorList = new ArrayList<>();
-        for (int i = 0; i < factorCount; i++) {
-            String factor;
-            do {
-                factor = allFactors[random.nextInt(allFactors.length)];
-            } while (factorList.contains(factor));
-            factorList.add(factor);
-        }
-
-        return factorList;
-    }
-
-    private String generateRecommendation(String entity, int riskScore) {
-        if (riskScore >= 40) {
-            return String.format("IMMEDIATE ACTION REQUIRED: Conduct security interview with %s and temporarily restrict access to sensitive systems", entity);
-        } else if (riskScore >= 30) {
-            return String.format("Investigate %s's recent access patterns and data transfers within 24 hours", entity);
-        } else {
-            return String.format("Monitor %s's activities for the next 48 hours and review recent file access history", entity);
-        }
+        return fallbackThreats;
     }
 }

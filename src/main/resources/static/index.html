@@ -161,7 +161,7 @@
             color: #333;
         }
         
-        .entity-name {
+        .ip-address {
             font-weight: 600;
         }
         
@@ -223,7 +223,7 @@
     <div class="container">
         <header>
             <h1>Insider Threat Identification Dashboard</h1>
-            <p class="subtitle">Proactively detect and monitor high-risk entities based on behavioral anomalies</p>
+            <p class="subtitle">Proactively detect and monitor high-risk IP addresses based on behavioral anomalies</p>
         </header>
         
         <div class="dashboard-stats">
@@ -240,7 +240,7 @@
                 <div class="stat-value medium-risk" id="medium-risk">0</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Total Entities</div>
+                <div class="stat-label">Total IP Addresses</div>
                 <div class="stat-value total-entities" id="total-entities">0</div>
             </div>
         </div>
@@ -254,7 +254,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Entity</th>
+                            <th>IP Address</th>
                             <th>Risk Score</th>
                             <th>Contributing Factors</th>
                             <th>Recommendation</th>
@@ -276,8 +276,8 @@
     </div>
 
     <script>
-        // API endpoint - adjust this to your backend URL
-        const API_URL = 'http://localhost:8080/api/insider-threats';
+        // API endpoint - adjusted to match ml_service.py
+        const API_URL = 'http://127.0.0.1:5000/api/predict-threats';
         
         // Fetch and display threat data
         async function fetchThreatData() {
@@ -328,7 +328,7 @@
                 
                 return `
                     <tr>
-                        <td class="entity-name">${threat.entity}</td>
+                        <td class="ip-address">${threat.ipAddress}</td>
                         <td>
                             <span class="risk-score ${riskClass}">
                                 ${threat.riskScore}
@@ -350,7 +350,7 @@
             
             document.getElementById('high-risk').textContent = highRiskCount;
             document.getElementById('medium-risk').textContent = mediumRiskCount;
-            document.getElementById('total-entities').textContent = 20; // Fixed total based on backend
+            document.getElementById('total-entities').textContent = threats.length; // Updated to reflect total IP addresses
         }
         
         // Initial load

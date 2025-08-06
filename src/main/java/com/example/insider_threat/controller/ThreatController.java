@@ -1,26 +1,23 @@
 package com.example.insider_threat.controller;
 
-import com.example.insider_threat.model.Threat;
 import com.example.insider_threat.service.ThreatService;
+import com.example.insider_threat.model.Threat;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api")
 public class ThreatController {
-    private final ThreatService threatService;
 
     @Autowired
-    public ThreatController(ThreatService threatService) {
-        this.threatService = threatService;
-    }
+    private ThreatService threatService;
 
-    @GetMapping("/insider-threats")
-    public List<Threat> getActiveInsiderThreats() {
-        return threatService.getActiveThreats();
+    @GetMapping("/api/insider-threats")
+    public ResponseEntity<List<Threat>> getActiveThreats() {
+        List<Threat> activeThreats = threatService.getActiveThreats();
+        return ResponseEntity.ok(activeThreats);
     }
 }
